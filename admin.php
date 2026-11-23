@@ -1831,7 +1831,7 @@ $search = trim($_GET['q'] ?? '');
                                     while ($dc = mysqli_fetch_assoc($doas)): ?>
                                         <tr>
                                             <td><?= $no++ ?></td>
-                                            <td style="font-family:monospace;font-size:11px"><?= esc($dc['campaign_id']) ?></td>
+                                            <td style="font-family:monospace;font-size:11px"><?= esc(!empty($dc['campaign_id']) ? $dc['campaign_id'] : ('card-' . ($dc['program_id'] ?? '1'))) ?></td>
                                             <td><?= esc($dc['donator_name']) ?></td>
                                             <td title="<?= esc($dc['message']) ?>">
                                                 <?= esc(mb_strimwidth($dc['message'], 0, 70, '…')) ?></td>

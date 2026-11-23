@@ -101,13 +101,43 @@ if ($stmt) {
         'campaign_id' => $campaign_id,
         'donator_name' => $row['donator_name'] ?? 'Anonim',
         'message' => $row['message'] ?? '',
-        'aamiin_count' => $row['aamiin_count'] ?? 0,
+        'aamiin_count' => (int)($row['aamiin_count'] ?? 0),
         'created_at' => $createdAt,
         'waktu' => waktuRelatif($createdAt)
       ];
     }
   }
   mysqli_stmt_close($stmt);
+}
+
+// Fallback jika doa_comments kosong, ambil langsung dari tabel donations
+if (empty($doaList)) {
+  $qDon = "SELECT id, donator_name, doa_message AS message, COALESCE(paid_at, created_at) AS created_at 
+           FROM donations 
+           WHERE (program_id = ? OR campaign_name LIKE '%Pendidikan%') 
+             AND doa_message IS NOT NULL AND TRIM(doa_message) != '' 
+           ORDER BY created_at DESC LIMIT 30";
+  $sDon = @mysqli_prepare($conn, $qDon);
+  if ($sDon) {
+    mysqli_stmt_bind_param($sDon, "i", $program_id);
+    mysqli_stmt_execute($sDon);
+    $resDon = mysqli_stmt_get_result($sDon);
+    if ($resDon) {
+      while ($r = mysqli_fetch_assoc($resDon)) {
+        $createdAt = $r['created_at'] ?? date('Y-m-d H:i:s');
+        $doaList[] = [
+          'id' => $r['id'],
+          'campaign_id' => $campaign_id,
+          'donator_name' => $r['donator_name'] ?? 'Anonim',
+          'message' => $r['message'] ?? '',
+          'aamiin_count' => 0,
+          'created_at' => $createdAt,
+          'waktu' => waktuRelatif($createdAt)
+        ];
+      }
+    }
+    mysqli_stmt_close($sDon);
+  }
 }
 
 // ✅ Fungsi helper: hitung waktu relatif (server-side, konsisten timezone)

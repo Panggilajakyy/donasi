@@ -45,4 +45,33 @@ $conn->set_charset("utf8mb4");
 // Pastikan zona waktu PHP dan MySQL selalu sinkron ke WIB (Asia/Jakarta / +07:00)
 date_default_timezone_set('Asia/Jakarta');
 @$conn->query("SET time_zone = '+07:00'");
+
+// Auto-sinkronisasi & auto-heal struktur tabel doa_comments jika tabel sudah ada
+if ($conn && !$conn->connect_error) {
+    // 1. Pastikan kolom campaign_id ada dan program_id nullable
+    $chkCol = @$conn->query("SHOW COLUMNS FROM doa_comments LIKE 'campaign_id'");
+    if (!$chkCol || $chkCol->num_rows === 0) {
+        @$conn->query("ALTER TABLE doa_comments ADD COLUMN campaign_id VARCHAR(50) DEFAULT NULL AFTER program_id");
+    }
+    @$conn->query("ALTER TABLE doa_comments MODIFY COLUMN program_id INT DEFAULT NULL");
+    @$conn->query("ALTER TABLE doa_comments MODIFY COLUMN campaign_id VARCHAR(50) DEFAULT NULL");
+    @$conn->query("UPDATE doa_comments SET program_id = CAST(SUBSTRING(campaign_id, 6) AS UNSIGNED) WHERE program_id IS NULL AND campaign_id LIKE 'card-%'");
+    @$conn->query("UPDATE doa_comments SET campaign_id = CONCAT('card-', program_id) WHERE campaign_id IS NULL AND program_id IS NOT NULL");
+
+    // 2. Sinkronkan doa dari tabel donations ke doa_comments jika belum ada
+    @$conn->query("INSERT INTO doa_comments (program_id, campaign_id, donator_name, message, aamiin_count, created_at)
+        SELECT 
+            COALESCE(d.program_id, 1), 
+            CONCAT('card-', COALESCE(d.program_id, 1)), 
+            d.donator_name, 
+            d.doa_message, 
+            0, 
+            COALESCE(d.paid_at, d.created_at)
+        FROM donations d
+        WHERE d.doa_message IS NOT NULL AND TRIM(d.doa_message) != ''
+        AND NOT EXISTS (
+            SELECT 1 FROM doa_comments dc 
+            WHERE dc.message = d.doa_message
+        )");
+}
 ?>

@@ -65,20 +65,30 @@ if ($stmt) {
 
 $persen = ($target > 0) ? round(($collected / $target) * 100) : 0;
 
+// Auto-sinkronisasi doa dari tabel donations ke doa_comments
+@mysqli_query($conn, "INSERT INTO doa_comments (program_id, campaign_id, donator_name, message, aamiin_count, created_at)
+    SELECT d.program_id, CONCAT('card-', d.program_id), d.donator_name, d.doa_message, 0, COALESCE(d.paid_at, d.created_at)
+    FROM donations d
+    WHERE d.doa_message IS NOT NULL AND TRIM(d.doa_message) != ''
+    AND NOT EXISTS (
+        SELECT 1 FROM doa_comments dc 
+        WHERE dc.message = d.doa_message
+    )");
+
 // ✅ AMBIL DOA - FILTER BERDASARKAN campaign_id atau program_id
 $doaList = [];
 $queryDoa = "SELECT id, donator_name, message, aamiin_count, created_at 
              FROM doa_comments 
              WHERE campaign_id = ? OR program_id = ? 
              ORDER BY created_at DESC 
-             LIMIT 20";
+             LIMIT 30";
 $stmt = @mysqli_prepare($conn, $queryDoa);
 if (!$stmt) {
     $queryDoa = "SELECT id, donator_name, message, aamiin_count, created_at 
                  FROM doa_comments 
                  WHERE program_id = ? 
                  ORDER BY created_at DESC 
-                 LIMIT 20";
+                 LIMIT 30";
     $stmt = @mysqli_prepare($conn, $queryDoa);
     if ($stmt) {
         mysqli_stmt_bind_param($stmt, "i", $program_id);
@@ -98,13 +108,43 @@ if ($stmt) {
                 'campaign_id' => $campaign_id,
                 'donator_name' => $row['donator_name'] ?? 'Anonim',
                 'message' => $row['message'] ?? '',
-                'aamiin_count' => $row['aamiin_count'] ?? 0,
+                'aamiin_count' => (int)($row['aamiin_count'] ?? 0),
                 'created_at' => $createdAt,
                 'waktu' => waktuRelatif($createdAt)
             ];
         }
     }
     mysqli_stmt_close($stmt);
+}
+
+// Fallback jika doa_comments kosong, ambil langsung dari tabel donations
+if (empty($doaList)) {
+    $qDon = "SELECT id, donator_name, doa_message AS message, COALESCE(paid_at, created_at) AS created_at 
+             FROM donations 
+             WHERE (program_id = ? OR campaign_name LIKE '%Yatim%') 
+               AND doa_message IS NOT NULL AND TRIM(doa_message) != '' 
+             ORDER BY created_at DESC LIMIT 30";
+    $sDon = @mysqli_prepare($conn, $qDon);
+    if ($sDon) {
+        mysqli_stmt_bind_param($sDon, "i", $program_id);
+        mysqli_stmt_execute($sDon);
+        $resDon = mysqli_stmt_get_result($sDon);
+        if ($resDon) {
+            while ($r = mysqli_fetch_assoc($resDon)) {
+                $createdAt = $r['created_at'] ?? date('Y-m-d H:i:s');
+                $doaList[] = [
+                    'id' => $r['id'],
+                    'campaign_id' => $campaign_id,
+                    'donator_name' => $r['donator_name'] ?? 'Anonim',
+                    'message' => $r['message'] ?? '',
+                    'aamiin_count' => 0,
+                    'created_at' => $createdAt,
+                    'waktu' => waktuRelatif($createdAt)
+                ];
+            }
+        }
+        mysqli_stmt_close($sDon);
+    }
 }
 
 // ✅ Fungsi helper: hitung waktu relatif (server-side, konsisten timezone)
