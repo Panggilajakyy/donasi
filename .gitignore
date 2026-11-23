@@ -2,6 +2,9 @@
 *.log
 donasi_error.log
 
+# Environment variables
+.env
+
 # Editor & System files
 .vscode/
 .idea/
