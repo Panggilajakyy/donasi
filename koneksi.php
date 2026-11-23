@@ -41,4 +41,8 @@ if ($conn->connect_error) {
 
 // Set charset ke utf8mb4
 $conn->set_charset("utf8mb4");
+
+// Pastikan zona waktu PHP dan MySQL selalu sinkron ke WIB (Asia/Jakarta / +07:00)
+date_default_timezone_set('Asia/Jakarta');
+@$conn->query("SET time_zone = '+07:00'");
 ?>

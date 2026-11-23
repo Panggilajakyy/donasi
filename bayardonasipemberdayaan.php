@@ -300,10 +300,10 @@ if ($method === 'POST' && isset($_GET['action']) && $_GET['action'] === 'konfirm
     jsonResponse(['success' => false, 'message' => 'Donasi tidak ditemukan atau sudah dikonfirmasi']);
   }
 
-  // 1. Update status jadi paid (paid_at pakai $now dari PHP, bukan NOW() MySQL)
-  $update = "UPDATE donations SET payment_status = 'paid', paid_at = ? WHERE invoice_no = ?"; // ✅ diubah
+  // 1. Update status jadi paid (paid_at & created_at disinkronkan ke $now WIB)
+  $update = "UPDATE donations SET payment_status = 'paid', paid_at = ?, created_at = ? WHERE invoice_no = ?";
   $stmtUp = mysqli_prepare($conn, $update);
-  mysqli_stmt_bind_param($stmtUp, 'ss', $now, $invoice); // ✅ diubah
+  mysqli_stmt_bind_param($stmtUp, 'sss', $now, $now, $invoice);
 
   if (!mysqli_stmt_execute($stmtUp)) {
     jsonResponse(['success' => false, 'message' => 'Gagal konfirmasi pembayaran']);

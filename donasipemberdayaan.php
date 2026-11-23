@@ -166,8 +166,8 @@ if ($action === 'get_donatur') {
   $page = max(1, (int) ($_GET['page'] ?? 1));
   $limit = max(1, (int) ($_GET['limit'] ?? 8));
   $offset = ($page - 1) * $limit;
-  $orderBy = ($mode === 'terbesar') ? "total_amount DESC" : "created_at DESC";
-  $query = "SELECT donator_name, total_amount, created_at FROM donations 
+  $orderBy = ($mode === 'terbesar') ? "total_amount DESC" : "COALESCE(paid_at, created_at) DESC";
+  $query = "SELECT donator_name, total_amount, COALESCE(paid_at, created_at) AS waktu_donasi FROM donations 
               WHERE program_id = ? AND payment_status = 'paid'
               ORDER BY $orderBy LIMIT ? OFFSET ?";
   $stmt = mysqli_prepare($conn, $query);
@@ -180,11 +180,12 @@ if ($action === 'get_donatur') {
   $result = mysqli_stmt_get_result($stmt);
   $donatur = [];
   while ($row = mysqli_fetch_assoc($result)) {
+    $tglDonasi = $row['waktu_donasi'] ?? date('Y-m-d H:i:s');
     $donatur[] = [
       'name' => htmlspecialchars($row['donator_name']),
       'amount' => (float) $row['total_amount'],
-      'time' => $row['created_at'],
-      'waktu' => waktuRelatif($row['created_at']) // ✅ Tambahan: konsisten juga untuk list donatur
+      'time' => $tglDonasi,
+      'waktu' => waktuRelatif($tglDonasi)
     ];
   }
   mysqli_stmt_close($stmt);
