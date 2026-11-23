@@ -462,7 +462,7 @@ function initNavigation() {
     }
 
     if (navAdmin) {
-        navAdmin.addEventListener('click', () => window.location.href = 'https://wa.me/6285166376862');
+        navAdmin.addEventListener('click', () => window.location.href = 'admin.php');
     }
 
     if (footerTentang) {

@@ -62,6 +62,15 @@ foreach ($icons as $slug => $svg) {
     }
 }
 
+// Pastikan akun admin default aktif (admin@dimzz.id / admin123)
+$adminHash = password_hash('admin123', PASSWORD_DEFAULT);
+$stmtAdmin = $conn->prepare("INSERT INTO `users` (`full_name`, `email`, `phone`, `password`, `role`) VALUES ('Administrator Dimzz', 'admin@dimzz.id', '081234567890', ?, 'admin') ON DUPLICATE KEY UPDATE `password` = VALUES(`password`), `role` = 'admin'");
+if ($stmtAdmin) {
+    $stmtAdmin->bind_param("s", $adminHash);
+    $stmtAdmin->execute();
+    $stmtAdmin->close();
+}
+
 echo "<p style='color:green; font-weight:bold; font-size:16px;'>✓ Database donasi dan seluruh tabel BERHASIL diperbarui & disinkronkan!</p>";
 echo "<p><a href='db.php' style='padding:10px 20px; background:#20b2aa; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold;'>Buka Beranda (db.php)</a> &nbsp; <a href='donasidarurat.php' style='padding:10px 20px; background:#2563eb; color:#fff; text-decoration:none; border-radius:5px; font-weight:bold;'>Tes Donasi Darurat</a></p>";
 ?>
