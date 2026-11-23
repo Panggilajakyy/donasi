@@ -38,6 +38,9 @@ if ($resDon && $resDon->num_rows === 0) {
     $conn->query("ALTER TABLE `donations` ADD `campaign_id` VARCHAR(50) DEFAULT NULL AFTER `program_id`");
 }
 
+// Perbaiki gambar program donasi darurat banjir agar memakai donasi.jpeg
+$conn->query("UPDATE `program_donasi` SET `gambar_banner` = 'donasi.jpeg', `gambar_thumbnail` = 'donasi.jpeg' WHERE `id` = 2 OR `kategori_id` = 5");
+
 // Perbaiki icon kategori donasi
 $icons = [
     'yatim' => '<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/></svg>',

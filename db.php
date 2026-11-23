@@ -60,8 +60,11 @@ if ($result_program) {
     else
       $label = 'Rp ' . number_format($terkumpul, 0, ',', '.');
 
-    // Gambar: utamakan gambar_banner, fallback thumbnail
+    // Gambar: utamakan gambar_banner, fallback thumbnail (pastikan program ID 2 Banjir Pekalongan memakai donasi.jpeg sesuai halaman donasidarurat)
     $gambar = !empty($row['gambar_banner']) ? $row['gambar_banner'] : ($row['gambar_thumbnail'] ?? '');
+    if ((int)$row['id'] === 2 && ($gambar === 'banjir.png' || empty($gambar))) {
+        $gambar = 'donasi.jpeg';
+    }
 
     // Judul: utamakan judul_banner untuk display singkat, fallback judul_program
     $judul = !empty($row['judul_banner']) ? $row['judul_banner'] : $row['judul_program'];
