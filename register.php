@@ -1,55 +1,62 @@
 <?php
 session_start();
-include 'koneksi.php'; // Sesuaikan dengan nama file koneksi Anda
+include 'koneksi.php';
+require_once 'csrf.php';
 
 $error = '';
 $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nama     = trim($_POST['nama']);
-    $email    = trim($_POST['email']);
-    $phone    = trim($_POST['phone']);
-    $password = $_POST['password'];
+    // 1. Validasi CSRF Token
+    if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
+        $error = "Sesi form telah kadaluarsa. Silakan muat ulang halaman.";
+    } else {
+        $nama     = trim($_POST['nama'] ?? '');
+        $email    = trim($_POST['email'] ?? '');
+        $phone    = trim($_POST['phone'] ?? '');
+        $password = $_POST['password'] ?? '';
 
-    // Validasi sisi server
-    $valid = true;
-    if (empty($nama)) {
-        $error = "Nama tidak boleh kosong.";
-        $valid = false;
-    } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Masukkan email yang valid.";
-        $valid = false;
-    } elseif (empty($phone)) {
-        $error = "Nomor HP tidak boleh kosong.";
-        $valid = false;
-    } elseif (strlen($password) < 8 || !preg_match('/[a-z]/', $password) || !preg_match('/[A-Z]/', $password) || !preg_match('/\d/', $password)) {
-        $error = "Password minimal 8 karakter, huruf besar, huruf kecil, dan angka.";
-        $valid = false;
-    }
-
-    if ($valid) {
-        // Cek duplikat email atau phone
-        $stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ? OR phone = ?");
-        mysqli_stmt_bind_param($stmt, "ss", $email, $phone);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_store_result($stmt);
-        if (mysqli_stmt_num_rows($stmt) > 0) {
-            $error = "Email atau nomor HP sudah terdaftar.";
-        } else {
-            // Simpan password plain text
-            $query = "INSERT INTO users (full_name, email, phone, password) VALUES (?, ?, ?, ?)";
-            $stmt2 = mysqli_prepare($conn, $query);
-            mysqli_stmt_bind_param($stmt2, "ssss", $nama, $email, $phone, $password);
-            if (mysqli_stmt_execute($stmt2)) {
-                $success = "Registrasi berhasil! Silakan login.";
-                // Redirect setelah 2 detik
-                echo "<script>setTimeout(function(){ window.location.href='index.php'; }, 2000);</script>";
-            } else {
-                $error = "Gagal mendaftar: " . mysqli_error($conn);
-            }
-            mysqli_stmt_close($stmt2);
+        // Validasi sisi server
+        $valid = true;
+        if (empty($nama)) {
+            $error = "Nama tidak boleh kosong.";
+            $valid = false;
+        } elseif (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = "Masukkan email yang valid.";
+            $valid = false;
+        } elseif (empty($phone)) {
+            $error = "Nomor HP tidak boleh kosong.";
+            $valid = false;
+        } elseif (strlen($password) < 8 || !preg_match('/[a-z]/', $password) || !preg_match('/[A-Z]/', $password) || !preg_match('/\d/', $password)) {
+            $error = "Password minimal 8 karakter, memuat huruf besar, huruf kecil, dan angka.";
+            $valid = false;
         }
-        mysqli_stmt_close($stmt);
+
+        if ($valid) {
+            // Cek duplikat email atau phone
+            $stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ? OR phone = ?");
+            mysqli_stmt_bind_param($stmt, "ss", $email, $phone);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_store_result($stmt);
+            if (mysqli_stmt_num_rows($stmt) > 0) {
+                $error = "Email atau nomor HP sudah terdaftar.";
+            } else {
+                // Simpan password dengan hash modern bcrypt
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+                $query = "INSERT INTO users (full_name, email, phone, password) VALUES (?, ?, ?, ?)";
+                $stmt2 = mysqli_prepare($conn, $query);
+                mysqli_stmt_bind_param($stmt2, "ssss", $nama, $email, $phone, $hashed_password);
+                if (mysqli_stmt_execute($stmt2)) {
+                    $success = "Registrasi berhasil! Mengalihkan ke halaman login...";
+                    // Redirect setelah 2 detik
+                    echo "<script>setTimeout(function(){ window.location.href='index.php'; }, 2000);</script>";
+                } else {
+                    $error = "Gagal mendaftar: " . mysqli_error($conn);
+                }
+                mysqli_stmt_close($stmt2);
+            }
+            mysqli_stmt_close($stmt);
+        }
     }
 }
 ?>
@@ -88,6 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="form">
         <form method="POST" action="" onsubmit="return validateForm()">
+            <?= csrf_field() ?>
             <div class="field">
                 <input type="text" name="nama" id="reg-name" placeholder="Nama Lengkap" autocomplete="name" value="<?= isset($_POST['nama']) ? htmlspecialchars($_POST['nama']) : '' ?>" />
                 <span class="field-err" id="err-name">Nama tidak boleh kosong.</span>
