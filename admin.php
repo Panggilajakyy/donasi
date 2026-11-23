@@ -25,7 +25,7 @@ if (isset($_GET['logout'])) {
 
 // ── Halaman aktif ─────────────────────────────────────────────────────────────
 $page = $_GET['page'] ?? 'dashboard';
-$allowed = ['dashboard', 'donasi', 'users', 'pengumuman', 'doa', 'program', 'kategori', 'payment'];
+$allowed = ['dashboard', 'donasi', 'users', 'pengumuman', 'doa', 'program', 'kategori', 'payment', 'penyaluran'];
 if (!in_array($page, $allowed))
     $page = 'dashboard';
 
@@ -423,6 +423,49 @@ if ($page === 'payment') {
             mysqli_stmt_bind_param($s, "ssdi", $code, $name, $fee, $aktif);
             mysqli_stmt_execute($s);
             $msg = "Ditambahkan.";
+        }
+    }
+}
+
+// ---- PENYALURAN DANA (LPJ Transparansi)
+mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `penyaluran_dana` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `program_id` INT NOT NULL,
+  `campaign_name` VARCHAR(255) NOT NULL,
+  `nominal_disalurkan` DECIMAL(15,2) NOT NULL,
+  `tanggal_penyaluran` DATE NOT NULL,
+  `lokasi_penerima` VARCHAR(255) NOT NULL,
+  `jumlah_penerima` VARCHAR(100) DEFAULT NULL,
+  `deskripsi` TEXT NOT NULL,
+  `foto_bukti` VARCHAR(255) DEFAULT 'bantuan.png',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+if ($page === 'penyaluran') {
+    if (isset($_GET['del_penyaluran'])) {
+        $id = (int)$_GET['del_penyaluran'];
+        $s = mysqli_prepare($conn, "DELETE FROM penyaluran_dana WHERE id=?");
+        mysqli_stmt_bind_param($s, "i", $id);
+        mysqli_stmt_execute($s);
+        header("Location: ?page=penyaluran");
+        exit();
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'save_penyaluran') {
+        $pid = (int)($_POST['program_id'] ?? 0);
+        $nom = (float)($_POST['nominal_disalurkan'] ?? 0);
+        $tgl = trim($_POST['tanggal_penyaluran'] ?? date('Y-m-d'));
+        $lok = trim($_POST['lokasi_penerima'] ?? '');
+        $jml = trim($_POST['jumlah_penerima'] ?? '');
+        $des = trim($_POST['deskripsi'] ?? '');
+        
+        $c_name = qval($conn, "SELECT judul_program FROM program_donasi WHERE id=" . $pid) ?: 'Donasi Umum';
+        
+        if ($nom <= 0 || !$des) {
+            $err = "Nominal dan deskripsi penyaluran wajib diisi.";
+        } else {
+            $s = mysqli_prepare($conn, "INSERT INTO penyaluran_dana (program_id, campaign_name, nominal_disalurkan, tanggal_penyaluran, lokasi_penerima, jumlah_penerima, deskripsi) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            mysqli_stmt_bind_param($s, "isdssss", $pid, $c_name, $nom, $tgl, $lok, $jml, $des);
+            mysqli_stmt_execute($s) ? $msg = "Laporan penyaluran dana tersimpan." : $err = "Gagal menyimpan laporan.";
         }
     }
 }
@@ -1034,6 +1077,7 @@ $search = trim($_GET['q'] ?? '');
                 $nav = [
                     'dashboard' => 'Dashboard',
                     'donasi' => 'Donasi',
+                    'penyaluran' => 'Penyaluran Dana (LPJ)',
                     'program' => 'Program Donasi',
                     'kategori' => 'Kategori',
                     'payment' => 'Metode Pembayaran',
@@ -1128,6 +1172,7 @@ $search = trim($_GET['q'] ?? '');
                                         <th>Metode</th>
                                         <th>Status</th>
                                         <th>Tanggal</th>
+                                        <th>Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1141,6 +1186,9 @@ $search = trim($_GET['q'] ?? '');
                                             <td><?= statusDonasi($d['payment_status']) ?></td>
                                             <td style="white-space:nowrap;color:var(--txt3)">
                                                 <?= date('d M Y', strtotime($d['created_at'])) ?></td>
+                                            <td>
+                                                <a href="kuitansi.php?invoice=<?= urlencode($d['invoice_no']) ?>" target="_blank" class="btn-action btn-green" style="font-size:11px;text-decoration:none;padding:2px 8px;">Kuitansi ↗</a>
+                                            </td>
                                         </tr>
                                     <?php endwhile; ?>
                                 </tbody>
@@ -1262,6 +1310,7 @@ $search = trim($_GET['q'] ?? '');
                                         <th>Status</th>
                                         <th>Doa/Pesan</th>
                                         <th>Tanggal</th>
+                                        <th>Kuitansi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1289,6 +1338,9 @@ $search = trim($_GET['q'] ?? '');
                                             </td>
                                             <td style="white-space:nowrap;color:var(--txt3)">
                                                 <?= date('d M Y H:i', strtotime($d['created_at'])) ?></td>
+                                            <td>
+                                                <a href="kuitansi.php?invoice=<?= urlencode($d['invoice_no']) ?>" target="_blank" class="btn-action btn-green" style="font-size:11px;text-decoration:none;padding:2px 8px;">Kuitansi ↗</a>
+                                            </td>
                                         </tr>
                                     <?php endwhile; ?>
                                 </tbody>
@@ -1891,6 +1943,118 @@ $search = trim($_GET['q'] ?? '');
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                <?php /* ══════════════════════ PENYALURAN DANA (LPJ) ══════════════════════ */
+                elseif ($page === 'penyaluran'): ?>
+                    <?php
+                    $progs = mysqli_query($conn, "SELECT id, judul_program FROM program_donasi WHERE status='aktif' ORDER BY urutan");
+                    $total_disalurkan = (float) qval($conn, "SELECT COALESCE(SUM(nominal_disalurkan), 0) FROM penyaluran_dana");
+                    $total_terkumpul = (float) qval($conn, "SELECT COALESCE(SUM(total_amount), 0) FROM donations WHERE payment_status='paid'");
+                    $penyaluran_rows = mysqli_query($conn, "SELECT * FROM penyaluran_dana ORDER BY tanggal_penyaluran DESC, id DESC");
+                    ?>
+                    <div class="stats">
+                        <div class="stat stat-green">
+                            <div class="stat-label">TOTAL DANA DISALURKAN</div>
+                            <div class="stat-val"><?= rp($total_disalurkan) ?></div>
+                            <div class="stat-sub">Realisasi bantuan ke penerima manfaat</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">TOTAL DONASI TERKUMPUL</div>
+                            <div class="stat-val"><?= rp($total_terkumpul) ?></div>
+                            <div class="stat-sub">Akumulasi donasi lunas terverifikasi</div>
+                        </div>
+                        <div class="stat stat-amber">
+                            <div class="stat-label">SISA SALDO SIAP DISALURKAN</div>
+                            <div class="stat-val"><?= rp(max(0, $total_terkumpul - $total_disalurkan)) ?></div>
+                            <div class="stat-sub">Tersedia untuk alokasi program</div>
+                        </div>
+                    </div>
+
+                    <div class="section-hd">
+                        <h2>Input Laporan Penyaluran Bantuan (LPJ)</h2>
+                    </div>
+                    <div class="card">
+                        <form method="POST" action="?page=penyaluran">
+                            <input type="hidden" name="action" value="save_penyaluran" />
+                            <div class="f-row">
+                                <div class="f-col">
+                                    <label class="f-label">Pilih Program Donasi *</label>
+                                    <select class="f-input" name="program_id" required>
+                                        <?php if ($progs): while ($p = mysqli_fetch_assoc($progs)): ?>
+                                            <option value="<?= $p['id'] ?>"><?= esc($p['judul_program']) ?></option>
+                                        <?php endwhile; endif; ?>
+                                    </select>
+                                </div>
+                                <div class="f-col">
+                                    <label class="f-label">Nominal Disalurkan (Rp) *</label>
+                                    <input class="f-input" type="number" name="nominal_disalurkan" placeholder="Contoh: 15000000" min="1000" required />
+                                </div>
+                                <div class="f-col">
+                                    <label class="f-label">Tanggal Penyaluran *</label>
+                                    <input class="f-input" type="date" name="tanggal_penyaluran" value="<?= date('Y-m-d') ?>" required />
+                                </div>
+                            </div>
+                            <div class="f-row" style="margin-top:12px">
+                                <div class="f-col">
+                                    <label class="f-label">Lokasi Penyaluran</label>
+                                    <input class="f-input" type="text" name="lokasi_penerima" placeholder="Contoh: Kec. Tirto & Pasirsari, Kota Pekalongan" />
+                                </div>
+                                <div class="f-col">
+                                    <label class="f-label">Jumlah Penerima Manfaat</label>
+                                    <input class="f-input" type="text" name="jumlah_penerima" placeholder="Contoh: 350 KK / 1.200 Jiwa" />
+                                </div>
+                            </div>
+                            <div style="margin-top:12px">
+                                <label class="f-label">Deskripsi Rincian Penyaluran Bantuan *</label>
+                                <textarea class="f-input" name="deskripsi" rows="3" placeholder="Tuliskan rincian bantuan yang diserahkan (misal: paket sembako, perbaikan pipa air, santunan pendidikan)..." required></textarea>
+                            </div>
+                            <div style="margin-top:16px">
+                                <button type="submit" class="btn-sm" style="background:var(--green-600);color:#fff">Simpan Laporan Penyaluran</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="section-hd" style="margin-top:20px">
+                        <h2>Riwayat Dokumentasi Penyaluran Dana</h2>
+                    </div>
+                    <div class="card">
+                        <div class="table-wrap">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal</th>
+                                        <th>Program</th>
+                                        <th>Nominal</th>
+                                        <th>Lokasi</th>
+                                        <th>Penerima</th>
+                                        <th>Keterangan</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if ($penyaluran_rows && mysqli_num_rows($penyaluran_rows) > 0): ?>
+                                        <?php while ($r = mysqli_fetch_assoc($penyaluran_rows)): ?>
+                                            <tr>
+                                                <td style="white-space:nowrap;color:var(--txt3)"><?= date('d M Y', strtotime($r['tanggal_penyaluran'])) ?></td>
+                                                <td><strong><?= esc(mb_strimwidth($r['campaign_name'], 0, 30, '…')) ?></strong></td>
+                                                <td style="white-space:nowrap;font-weight:700;color:var(--green-600)"><?= rp($r['nominal_disalurkan']) ?></td>
+                                                <td><?= esc($r['lokasi_penerima'] ?: '-') ?></td>
+                                                <td><span class="pill pill-green"><?= esc($r['jumlah_penerima'] ?: 'Tersalurkan') ?></span></td>
+                                                <td style="max-width:240px" title="<?= esc($r['deskripsi']) ?>"><?= esc(mb_strimwidth($r['deskripsi'], 0, 45, '…')) ?></td>
+                                                <td>
+                                                    <a href="?page=penyaluran&del_penyaluran=<?= $r['id'] ?>" class="btn-action btn-red" onclick="return confirm('Hapus laporan penyaluran ini?')">Hapus</a>
+                                                </td>
+                                            </tr>
+                                        <?php endwhile; ?>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td colspan="7" style="text-align:center;padding:24px;color:var(--txt3)">Belum ada laporan penyaluran dana. Gunakan formulir di atas untuk mencatat realisasi bantuan.</td>
+                                        </tr>
+                                    <?php endif; ?>
                                 </tbody>
                             </table>
                         </div>

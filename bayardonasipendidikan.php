@@ -1459,8 +1459,8 @@ function getPaymentInstructions($method, $total, $invoice)
             message += '\n\n🤲 Doa Anda telah tersimpan.';
           }
 
-          alert(message);
-          window.location.href = 'donasipendidikan.php';
+          alert(message + '\n\nMenampilkan kuitansi donasi digital Anda...');
+          window.location.href = 'kuitansi.php?invoice=' + encodeURIComponent(invoice);
         } else {
           alert('❌ Gagal: ' + result.message);
         }
