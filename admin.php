@@ -1,6 +1,7 @@
 <?php
 session_start();
 include 'koneksi.php';
+require_once 'notif_helper.php';
 
 // ── Guard: hanya admin ────────────────────────────────────────────────────────
 if (!isset($_SESSION['user_id'])) {
@@ -1187,7 +1188,12 @@ $search = trim($_GET['q'] ?? '');
                                             <td style="white-space:nowrap;color:var(--txt3)">
                                                 <?= date('d M Y', strtotime($d['created_at'])) ?></td>
                                             <td>
-                                                <a href="kuitansi.php?invoice=<?= urlencode($d['invoice_no']) ?>" target="_blank" class="btn-action btn-green" style="font-size:11px;text-decoration:none;padding:2px 8px;">Kuitansi ↗</a>
+                                                <div style="display:flex;gap:4px;align-items:center;">
+                                                    <a href="kuitansi.php?invoice=<?= urlencode($d['invoice_no']) ?>" target="_blank" class="btn-action btn-green" style="font-size:11px;text-decoration:none;padding:2px 8px;">Kuitansi ↗</a>
+                                                    <?php if (!empty($d['donator_phone'])): ?>
+                                                        <a href="<?= getTautanWhatsApp($d['donator_phone'], generateTeksWADonasi($d)) ?>" target="_blank" class="btn-action" style="background:#25D366;color:#fff;font-size:11px;text-decoration:none;padding:2px 6px;" title="Kirim Kuitansi via WhatsApp">WA</a>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
@@ -1339,7 +1345,12 @@ $search = trim($_GET['q'] ?? '');
                                             <td style="white-space:nowrap;color:var(--txt3)">
                                                 <?= date('d M Y H:i', strtotime($d['created_at'])) ?></td>
                                             <td>
-                                                <a href="kuitansi.php?invoice=<?= urlencode($d['invoice_no']) ?>" target="_blank" class="btn-action btn-green" style="font-size:11px;text-decoration:none;padding:2px 8px;">Kuitansi ↗</a>
+                                                <div style="display:flex;gap:4px;align-items:center;">
+                                                    <a href="kuitansi.php?invoice=<?= urlencode($d['invoice_no']) ?>" target="_blank" class="btn-action btn-green" style="font-size:11px;text-decoration:none;padding:2px 8px;">Kuitansi ↗</a>
+                                                    <?php if (!empty($d['donator_phone'])): ?>
+                                                        <a href="<?= getTautanWhatsApp($d['donator_phone'], generateTeksWADonasi($d)) ?>" target="_blank" class="btn-action" style="background:#25D366;color:#fff;font-size:11px;text-decoration:none;padding:2px 6px;" title="Kirim Kuitansi via WhatsApp">WA</a>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                         </tr>
                                     <?php endwhile; ?>
