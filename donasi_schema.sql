@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 -- Admin Default (Password: admin123)
 INSERT INTO `users` (`full_name`, `email`, `phone`, `password`, `role`) VALUES
-('Administrator Dimzz', 'admin@dimzz.id', '081234567890', '$2y$10$wT5gI0w1sO3tLgE3jH5R..z4w7dO.vXfQ4GZtJmKfR7vY1a3vO7y2', 'admin')
-ON DUPLICATE KEY UPDATE `id`=`id`;
+('Administrator Dimzz', 'admin@dimzz.id', '081234567890', 'admin123', 'admin')
+ON DUPLICATE KEY UPDATE `password`=VALUES(`password`), `role`='admin';
 
 -- --------------------------------------------------------
 -- 2. Tabel kategori_donasi
