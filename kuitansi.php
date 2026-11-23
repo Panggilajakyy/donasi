@@ -30,7 +30,9 @@ $status = strtolower($donasi['payment_status'] ?? 'pending');
 $tglBayar = !empty($donasi['paid_at']) ? date('d F Y - H:i', strtotime($donasi['paid_at'])) . ' WIB' : date('d F Y - H:i', strtotime($donasi['created_at'])) . ' WIB';
 
 // Buat tautan share / notifikasi WhatsApp
-$waUrl = getTautanWhatsApp($donasi['donator_phone'] ?: '', generateTeksWADonasi($donasi));
+$targetPhone = !empty($donasi['donator_phone']) ? $donasi['donator_phone'] : '085166376862';
+$waUrl = getTautanWhatsApp($targetPhone, generateTeksWADonasi($donasi));
+$waAdminUrl = getTautanWhatsApp('085166376862', generateTeksWADonasi($donasi));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -89,9 +91,22 @@ $waUrl = getTautanWhatsApp($donasi['donator_phone'] ?: '', generateTeksWADonasi(
             gap: 12px;
         }
 
+        .brand-logo-wrap {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #20b2aa, #0f766e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(32, 178, 170, 0.35);
+            flex-shrink: 0;
+            padding: 6px;
+        }
+
         .brand-logo {
-            width: 48px;
-            height: 48px;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
         }
 
@@ -362,7 +377,9 @@ $waUrl = getTautanWhatsApp($donasi['donator_phone'] ?: '', generateTeksWADonasi(
 
         <div class="receipt-header">
             <div class="brand-box">
-                <img src="logo.png" alt="Dimzz Logo" class="brand-logo">
+                <div class="brand-logo-wrap">
+                    <img src="logo.png" alt="Dimzz Logo" class="brand-logo">
+                </div>
                 <div>
                     <div class="brand-name">DIMZZ DONASI</div>
                     <div class="brand-sub">Platform Kebaikan Digital Indonesia</div>
@@ -451,12 +468,12 @@ $waUrl = getTautanWhatsApp($donasi['donator_phone'] ?: '', generateTeksWADonasi(
         <a href="db.php" class="btn-action btn-back">
             ← Kembali ke Portal
         </a>
-        <div style="display:flex;gap:10px;">
-            <a href="<?= $waUrl ?>" target="_blank" class="btn-action" style="background:#25D366;color:#ffffff;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <a href="<?= htmlspecialchars($waAdminUrl) ?>" target="_blank" class="btn-action" style="background:#25D366;color:#ffffff;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.145.39-.086.159.058 1.011.477 1.184.564.173.086.289.13.332.202.043.073.043.419-.101.824z"/>
                 </svg>
-                Kirim ke WhatsApp 💬
+                Kirim ke WA (085166376862) 💬
             </a>
             <button onclick="window.print()" class="btn-action btn-print">
                 <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">

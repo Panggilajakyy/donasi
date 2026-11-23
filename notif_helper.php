@@ -36,8 +36,11 @@ function generateTeksWADonasi(array $donasi): string
 
     // Buat URL kuitansi
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $receiptUrl = $protocol . $host . "/donasi/kuitansi.php?invoice=" . urlencode($invoice);
+    $host = $_SERVER['HTTP_HOST'] ?? 'dimzdonasi.infinityfree.io';
+    // Cek apakah ada subfolder /donasi/ atau di root
+    $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '');
+    $basePath = ($scriptDir === '/' || $scriptDir === '\\' || $scriptDir === '.') ? '' : rtrim($scriptDir, '/\\');
+    $receiptUrl = $protocol . $host . $basePath . "/kuitansi.php?invoice=" . urlencode($invoice);
 
     $msg = "✨ *DIMZZ DONASI — BUKTI DONASI RESMI* ✨\n\n";
     $msg .= "Assalamu’alaikum Warahmatullahi Wabarakatuh,\n";
