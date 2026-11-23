@@ -162,6 +162,7 @@ $programs_json = json_encode($programs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_
       background: linear-gradient(to top, rgba(0, 0, 0, .85), transparent);
       color: #fff;
       pointer-events: none;
+      display: none; /* Disembunyikan agar gambar flyer banner yang sudah berteks tampil jernih & tidak bertabrakan */
     }
 
     .banner-badge {
@@ -335,13 +336,21 @@ $programs_json = json_encode($programs, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_
     <div class="categories">
       <div class="cat-grid">
         <?php
+        $defaultIcons = [
+          'yatim' => '<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/></svg>',
+          'pendidikan' => '<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+          'pemberdayaan' => '<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
+          'kesehatan' => '<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+          'darurat' => '<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+        ];
         if ($result_kategori && mysqli_num_rows($result_kategori) > 0):
           mysqli_data_seek($result_kategori, 0);
           while ($kat = mysqli_fetch_assoc($result_kategori)):
+            $iconSvg = !empty($kat['icon_svg']) ? $kat['icon_svg'] : ($defaultIcons[$kat['slug']] ?? '<svg fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>');
             ?>
             <a class="cat-item" href="<?= htmlspecialchars($kat['halaman_url'] ?: '#') ?>"
               data-cat="<?= htmlspecialchars($kat['slug']) ?>">
-              <div class="cat-icon"><?= $kat['icon_svg'] ?></div>
+              <div class="cat-icon"><?= $iconSvg ?></div>
               <span class="cat-label"><?= htmlspecialchars($kat['nama_kategori']) ?></span>
             </a>
             <?php

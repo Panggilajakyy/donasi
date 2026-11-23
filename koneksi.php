@@ -3,6 +3,7 @@
 
 // Parser .env sederhana jika file .env ada di direktori project
 $envFile = __DIR__ . '/.env';
+$env = [];
 if (file_exists($envFile)) {
     $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     foreach ($lines as $line) {
@@ -12,28 +13,30 @@ if (file_exists($envFile)) {
             [$key, $value] = explode('=', $line, 2);
             $key = trim($key);
             $value = trim($value, " \t\n\r\0\x0B\"'");
-            if (!array_key_exists($key, $_SERVER) && !array_key_exists($key, $_ENV)) {
-                putenv("$key=$value");
-                $_ENV[$key] = $value;
-                $_SERVER[$key] = $value;
-            }
+            $env[$key] = $value;
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+            @putenv("$key=$value");
         }
     }
 }
 
-// Ambil konfigurasi dari environment (atau fallback ke default lokal)
-$host = getenv('DB_HOST') ?: 'localhost';
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
-$db   = getenv('DB_NAME') ?: 'donasi';
-$port = (int)(getenv('DB_PORT') ?: 3306);
+// Ambil konfigurasi (prioritas: parsed .env -> $_ENV -> $_SERVER -> getenv -> default)
+$host = $env['DB_HOST'] ?? $_ENV['DB_HOST'] ?? $_SERVER['DB_HOST'] ?? (@getenv('DB_HOST') ?: 'localhost');
+$user = $env['DB_USER'] ?? $_ENV['DB_USER'] ?? $_SERVER['DB_USER'] ?? (@getenv('DB_USER') ?: 'root');
+$pass = isset($env['DB_PASS']) ? $env['DB_PASS'] : ($_ENV['DB_PASS'] ?? $_SERVER['DB_PASS'] ?? (@getenv('DB_PASS') !== false ? @getenv('DB_PASS') : ''));
+$db   = $env['DB_NAME'] ?? $_ENV['DB_NAME'] ?? $_SERVER['DB_NAME'] ?? (@getenv('DB_NAME') ?: 'donasi');
+$port = (int)($env['DB_PORT'] ?? $_ENV['DB_PORT'] ?? $_SERVER['DB_PORT'] ?? (@getenv('DB_PORT') ?: 3306));
+
+// Matikan exception fatal di PHP 8.1+ agar error query bisa ditangani dengan aman
+mysqli_report(MYSQLI_REPORT_OFF);
 
 // Membuat koneksi
 $conn = @new mysqli($host, $user, $pass, $db, $port);
 
 // Cek koneksi
 if ($conn->connect_error) {
-    die("Koneksi database gagal: " . $conn->connect_error . " (Pastikan MySQL berjalan dan database '" . htmlspecialchars($db) . "' sudah dibuat)");
+    die("Koneksi database gagal: " . $conn->connect_error . " (Host: $host, DB: $db. Pastikan kredensial benar dan database sudah di-import)");
 }
 
 // Set charset ke utf8mb4

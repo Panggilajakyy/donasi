@@ -40,13 +40,13 @@ CREATE TABLE IF NOT EXISTS `kategori_donasi` (
   `is_active` TINYINT(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-INSERT INTO `kategori_donasi` (`id`, `nama_kategori`, `slug`, `warna_badge`, `halaman_url`, `urutan`, `is_active`) VALUES
-(1, 'Yatim & Dhuafa', 'yatim', '#ef4444', 'donasiyatim.php', 1, 1),
-(2, 'Pendidikan', 'pendidikan', '#10b981', 'donasipendidikan.php', 2, 1),
-(3, 'Pemberdayaan', 'pemberdayaan', '#20b2aa', 'donasipemberdayaan.php', 3, 1),
-(4, 'Kesehatan', 'kesehatan', '#06b6d4', 'donasikesehatan.php', 4, 1),
-(5, 'Darurat Bencana', 'darurat', '#f59e0b', 'donasidarurat.php', 5, 1)
-ON DUPLICATE KEY UPDATE `id`=`id`;
+INSERT INTO `kategori_donasi` (`id`, `nama_kategori`, `slug`, `icon_svg`, `warna_badge`, `halaman_url`, `urutan`, `is_active`) VALUES
+(1, 'Yatim & Dhuafa', 'yatim', '<svg fill=\"none\" stroke=\"white\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><circle cx=\"9\" cy=\"7\" r=\"4\"/><path d=\"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2\"/></svg>', '#ef4444', 'donasiyatim.php', 1, 1),
+(2, 'Pendidikan', 'pendidikan', '<svg fill=\"none\" stroke=\"white\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"M4 19.5A2.5 2.5 0 0 1 6.5 17H20\"/><path d=\"M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z\"/></svg>', '#10b981', 'donasipendidikan.php', 2, 1),
+(3, 'Pemberdayaan', 'pemberdayaan', '<svg fill=\"none\" stroke=\"white\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><line x1=\"12\" y1=\"20\" x2=\"12\" y2=\"10\"/><line x1=\"18\" y1=\"20\" x2=\"18\" y2=\"4\"/><line x1=\"6\" y1=\"20\" x2=\"6\" y2=\"16\"/></svg>', '#20b2aa', 'donasipemberdayaan.php', 3, 1),
+(4, 'Kesehatan', 'kesehatan', '<svg fill=\"none\" stroke=\"white\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><path d=\"M22 12h-4l-3 9L9 3l-3 9H2\"/></svg>', '#06b6d4', 'donasikesehatan.php', 4, 1),
+(5, 'Darurat Bencana', 'darurat', '<svg fill=\"none\" stroke=\"white\" stroke-width=\"2\" viewBox=\"0 0 24 24\"><polygon points=\"13 2 3 14 12 14 11 22 21 10 12 10 13 2\"/></svg>', '#f59e0b', 'donasidarurat.php', 5, 1)
+ON DUPLICATE KEY UPDATE `icon_svg`=VALUES(`icon_svg`), `nama_kategori`=VALUES(`nama_kategori`);
 
 -- --------------------------------------------------------
 -- 3. Tabel program_donasi
@@ -86,6 +86,7 @@ ON DUPLICATE KEY UPDATE `id`=`id`;
 CREATE TABLE IF NOT EXISTS `donations` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `program_id` INT DEFAULT NULL,
+  `campaign_id` VARCHAR(50) DEFAULT NULL,
   `invoice_no` VARCHAR(60) NOT NULL UNIQUE,
   `campaign_name` VARCHAR(255) DEFAULT NULL,
   `donator_name` VARCHAR(150) NOT NULL,
@@ -112,6 +113,7 @@ CREATE TABLE IF NOT EXISTS `donations` (
 CREATE TABLE IF NOT EXISTS `doa_comments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `program_id` INT DEFAULT NULL,
+  `campaign_id` VARCHAR(50) DEFAULT NULL,
   `donator_name` VARCHAR(150) NOT NULL,
   `message` TEXT NOT NULL,
   `aamiin_count` INT DEFAULT 0,

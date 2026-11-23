@@ -28,69 +28,84 @@ $queryProgram = "SELECT p.*, k.nama_kategori, k.warna_badge
                  WHERE p.id = ?
                  LIMIT 1";
 $stmt = mysqli_prepare($conn, $queryProgram);
-mysqli_stmt_bind_param($stmt, "i", $program_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-$data = mysqli_fetch_assoc($result);
-mysqli_stmt_close($stmt);
+$data = null;
+if ($stmt) {
+    mysqli_stmt_bind_param($stmt, "i", $program_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $data = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+}
 
 // Fallback kalau DB kosong
 $judul = $data['judul_program'] ?? 'PEDULI YATIM & DHUAFA, HADIRKAN HARAPAN BARU!';
 $gambar = $data['gambar_banner'] ?? 'donasiyatim.png';
 $target = (float) ($data['target_donasi'] ?? 300000000);
 $sisa_hari = (int) ($data['sisa_hari'] ?? 12);
+$totalDonasi = (int) ($data['jumlah_donatur'] ?? 1820);
+$collected = (float) ($data['donasi_terkumpul'] ?? 201000000);
 
 // Ambil total donatur dan terkumpul dari tabel donations
 $countQuery = "SELECT COUNT(*) as total, SUM(total_amount) as total_amount 
                FROM donations 
-               WHERE program_id = ? AND payment_status = 'paid'";
+               WHERE (program_id = ? OR campaign_id = ?) AND payment_status = 'paid'";
 $stmt = mysqli_prepare($conn, $countQuery);
-mysqli_stmt_bind_param($stmt, "i", $program_id);
-mysqli_stmt_execute($stmt);
-$countResult = mysqli_stmt_get_result($stmt);
-$countRow = mysqli_fetch_assoc($countResult);
-$totalDonasi = $countRow['total'] ?? 0;
-$collected = $countRow['total_amount'] ?? 0;
-mysqli_stmt_close($stmt);
-
-// Update program_donasi dengan data terbaru (sinkronisasi)
-$updateProgram = "UPDATE program_donasi 
-                  SET donasi_terkumpul = ?, jumlah_donatur = ? 
-                  WHERE id = ?";
-$stmt = mysqli_prepare($conn, $updateProgram);
-mysqli_stmt_bind_param($stmt, "dii", $collected, $totalDonasi, $program_id);
-mysqli_stmt_execute($stmt);
-mysqli_stmt_close($stmt);
+if ($stmt) {
+    mysqli_stmt_bind_param($stmt, "is", $program_id, $campaign_id);
+    mysqli_stmt_execute($stmt);
+    $countResult = mysqli_stmt_get_result($stmt);
+    if ($countResult && $countRow = mysqli_fetch_assoc($countResult)) {
+        if (!empty($countRow['total'])) {
+            $totalDonasi = (int)$countRow['total'];
+            $collected = (float)($countRow['total_amount'] ?? 0);
+        }
+    }
+    mysqli_stmt_close($stmt);
+}
 
 $persen = ($target > 0) ? round(($collected / $target) * 100) : 0;
 
-// ✅ AMBIL DOA - FILTER BERDASARKAN campaign_id
+// ✅ AMBIL DOA - FILTER BERDASARKAN campaign_id atau program_id
 $doaList = [];
-$queryDoa = "SELECT id, campaign_id, donator_name, message, aamiin_count, created_at 
+$queryDoa = "SELECT id, donator_name, message, aamiin_count, created_at 
              FROM doa_comments 
-             WHERE campaign_id = ? 
+             WHERE campaign_id = ? OR program_id = ? 
              ORDER BY created_at DESC 
              LIMIT 20";
-$stmt = mysqli_prepare($conn, $queryDoa);
-mysqli_stmt_bind_param($stmt, "s", $campaign_id);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-    $createdAt = $row['created_at'] ?? date('Y-m-d H:i:s');
-        $doaList[] = [
-            'id' => $row['id'],
-            'campaign_id' => $row['campaign_id'],
-            'donator_name' => $row['donator_name'] ?? 'Anonim',
-            'message' => $row['message'] ?? '',
-            'aamiin_count' => $row['aamiin_count'] ?? 0,
-            'created_at' => $createdAt,
-            'waktu' => waktuRelatif($createdAt) // ✅ Tambahan: hitung waktu di server
-        ];
+$stmt = @mysqli_prepare($conn, $queryDoa);
+if (!$stmt) {
+    $queryDoa = "SELECT id, donator_name, message, aamiin_count, created_at 
+                 FROM doa_comments 
+                 WHERE program_id = ? 
+                 ORDER BY created_at DESC 
+                 LIMIT 20";
+    $stmt = @mysqli_prepare($conn, $queryDoa);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "i", $program_id);
     }
+} else {
+    mysqli_stmt_bind_param($stmt, "si", $campaign_id, $program_id);
 }
-mysqli_stmt_close($stmt);
+
+if ($stmt) {
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $createdAt = $row['created_at'] ?? date('Y-m-d H:i:s');
+            $doaList[] = [
+                'id' => $row['id'],
+                'campaign_id' => $campaign_id,
+                'donator_name' => $row['donator_name'] ?? 'Anonim',
+                'message' => $row['message'] ?? '',
+                'aamiin_count' => $row['aamiin_count'] ?? 0,
+                'created_at' => $createdAt,
+                'waktu' => waktuRelatif($createdAt)
+            ];
+        }
+    }
+    mysqli_stmt_close($stmt);
+}
 
 // ✅ Fungsi helper: hitung waktu relatif (server-side, konsisten timezone)
 function waktuRelatif($datetimeStr)
