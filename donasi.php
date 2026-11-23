@@ -199,7 +199,17 @@ if ($program['target_donasi'] > 0) {
             </div>
         </div>
         
-        <button class="btn-donasi" onclick="alert('Fitur donasi akan segera hadir!')">
+        <?php
+        $payPages = [
+            1 => 'bayardonasiyatim.php',
+            2 => 'bayardonasidarurat.php',
+            3 => 'bayardonasipendidikan.php',
+            4 => 'bayardonasipemberdayaan.php',
+            5 => 'bayardonasikesehatan.php',
+        ];
+        $payUrl = $payPages[$id] ?? 'db.php';
+        ?>
+        <button class="btn-donasi" onclick="window.location.href='<?= $payUrl ?>'">
             ❤️ Donasi Sekarang
         </button>
     </div>
