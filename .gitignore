@@ -1,0 +1,9 @@
+# Logs
+*.log
+donasi_error.log
+
+# Editor & System files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
